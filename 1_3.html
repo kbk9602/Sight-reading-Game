@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>악보 읽기 게임 - 낮은음자리표</title>
+
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+
+    /* 오선지 영역 */
+    #staff {
+        position: relative;
+        width: 520px;
+        height: 200px;
+        margin: 50px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: black;
+        z-index: 10;
+    }
+
+    /* 덧줄 (가운데 C용) */
+    .ledger {
+        position: absolute;
+        width: 46px;
+        height: 2px;
+        background: black;
+        left: 312px;
+        display: none;
+        z-index: 10; 
+    }
+
+    /* 낮은음자리표 크기 및 위치 최적화 */
+    #clef {
+        position: absolute;
+        font-size: 110px;
+        left: 20px;
+        top: 32px; 
+        z-index: 3;
+        user-select: none;
+    }
+
+    /* 음표 (관통 효과를 위해 배경 투명) */
+    #note {
+        position: absolute;
+        width: 24px;
+        height: 16px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        left: 320px;
+        z-index: 5;
+        transform: rotate(-15deg);
+    }
+
+    /* 피아노 건반 */
+    #piano { position: relative; width: 480px; height: 200px; margin: 40px auto; }
+
+    .white {
+        position: absolute;
+        width: 60px;
+        height: 200px;
+        background: white;
+        border: 1px solid #ccc;
+        border-bottom: 4px solid #bbb;
+        cursor: pointer;
+        border-radius: 0 0 5px 5px;
+        display: flex;
+        justify-content: center;
+        transition: background 0.1s;
+    }
+    .white:active { background: #eee; }
+    .white span { position: absolute; bottom: 10px; font-size: 14px; font-weight: bold; color: #888; }
+
+    .black { position: absolute; width: 36px; height: 120px; background: #333; top: 0; z-index: 11; cursor: pointer; border-radius: 0 0 3px 3px; }
+</style>
+</head>
+
+<body>
+
+<h1>🎹 악보 읽기 게임 (낮은음자리표)</h1>
+
+<div id="staff">
+    <div id="clef">𝄢</div>
+    
+    <div class="line" style="top:60px"></div>
+    <div class="line" style="top:80px"></div>
+    <div class="line" style="top:100px"></div>
+    <div class="line" style="top:120px"></div>
+    <div class="line" style="top:140px"></div>
+
+    <div id="ledger" class="ledger"></div>
+
+    <div id="note"></div>
+</div>
+
+<div id="piano">
+    <div class="white" style="left:0px" onclick="press('C3')"><span>C3</span></div>
+    <div class="white" style="left:60px" onclick="press('D3')"></div>
+    <div class="white" style="left:120px" onclick="press('E3')"></div>
+    <div class="white" style="left:180px" onclick="press('F3')"></div>
+    <div class="white" style="left:240px" onclick="press('G3')"></div>
+    <div class="white" style="left:300px" onclick="press('A3')"></div>
+    <div class="white" style="left:360px" onclick="press('B3')"></div>
+    <div class="white" style="left:420px" onclick="press('C4')"><span>가운데 C</span></div>
+
+    <div class="black" style="left:42px"></div>
+    <div class="black" style="left:102px"></div>
+    <div class="black" style="left:222px"></div>
+    <div class="black" style="left:282px"></div>
+    <div class="black" style="left:342px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    // 음계 배열 (C3부터 가운데 C인 C4까지)
+    const scale = ["C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4"];
+    
+    let currentStep = 0;
+    let score = 0;
+
+    // 낮은음자리표 보정 수치
+    // C3(두 번째 칸)가 정확히 위치하도록 계산
+    const baseY = 98; 
+    const stepSize = 10;
+
+    function newNote() {
+        currentStep = Math.floor(Math.random() * scale.length);
+        
+        let y = baseY - (currentStep * stepSize);
+        document.getElementById("note").style.top = y + "px";
+
+        let ledger = document.getElementById("ledger");
+        ledger.style.display = "none";
+
+        // C4 (가운데 C, 인덱스 7)일 때 위쪽 첫 번째 덧줄 표시
+        if (currentStep === 7) {
+            ledger.style.display = "block";
+            ledger.style.top = "40px"; // 오선지 맨 윗줄(60px)보다 20px 위
+        }
+    }
+
+    function press(key) {
+        if (key === scale[currentStep]) {
+            score++;
+            document.getElementById("score").innerText = score;
+            newNote();
+        } else {
+            alert("틀렸어요! 다시 찾아볼까요? 😊");
+        }
+    }
+
+    newNote();
+</script>
+
+</body>
+</html>

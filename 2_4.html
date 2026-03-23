@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>화음 읽기 게임 - 위치 보정 최종판</title>
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+    
+    #staff {
+        position: relative;
+        width: 520px;
+        height: 240px; 
+        margin: 40px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* 오선: 상단 기준 100, 120, 140, 160, 180px */
+    .line { position: absolute; width: 100%; height: 2px; background: black; z-index: 5; }
+    
+    .dynamic-ledger {
+        position: absolute;
+        width: 38px;
+        height: 2px;
+        background: black;
+        z-index: 5;
+    }
+
+    #clef { position: absolute; font-size: 110px; left: 20px; top: 74px; z-index: 3; user-select: none; }
+
+    .note {
+        position: absolute;
+        width: 22px;
+        height: 14px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        z-index: 10;
+        transform: rotate(-15deg);
+    }
+
+    #piano { position: relative; width: 495px; height: 200px; margin: 40px auto; }
+    
+    .white {
+        position: absolute; width: 45px; height: 200px; background: white;
+        border: 1px solid #ccc; border-bottom: 4px solid #bbb; cursor: pointer; border-radius: 0 0 5px 5px;
+        display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px;
+    }
+    
+    .white span { 
+        font-size: 11px; 
+        font-weight: bold; 
+        color: #e53935;
+        margin-bottom: 5px;
+    }
+    
+    .white.selected { background: #ffeb3b !important; }
+    .black { position: absolute; width: 28px; height: 120px; background: #333; top: 0; z-index: 11; border-radius: 0 0 3px 3px; }
+</style>
+</head>
+<body>
+
+<h1>🎹 화음 읽기 게임</h1>
+<p>오선지에 나타난 두 개의 음을 건반에서 차례로 눌러보세요!</p>
+
+<div id="staff">
+    <div id="clef">𝄢</div>
+    <div class="line" style="top:100px"></div>
+    <div class="line" style="top:120px"></div>
+    <div class="line" style="top:140px"></div>
+    <div class="line" style="top:160px"></div>
+    <div class="line" style="top:180px"></div>
+    
+    <div id="ledger-container"></div>
+    <div id="note1" class="note"></div>
+    <div id="note2" class="note"></div>
+</div>
+
+<div id="piano">
+    <div id="key-F3" class="white" style="left:0px" onclick="press('F3')"></div>
+    <div id="key-G3" class="white" style="left:45px" onclick="press('G3')"></div>
+    <div id="key-A3" class="white" style="left:90px" onclick="press('A3')"></div>
+    <div id="key-B3" class="white" style="left:135px" onclick="press('B3')"></div>
+    <div id="key-가운데 C" class="white" style="left:180px" onclick="press('가운데 C')"><span>가운데 C</span></div>
+    <div id="key-D4" class="white" style="left:225px" onclick="press('D4')"></div>
+    <div id="key-E4" class="white" style="left:270px" onclick="press('E4')"></div>
+    <div id="key-F4" class="white" style="left:315px" onclick="press('F4')"></div>
+    <div id="key-G4" class="white" style="left:360px" onclick="press('G4')"></div>
+    <div id="key-A4" class="white" style="left:405px" onclick="press('A4')"></div>
+    <div id="key-B4" class="white" style="left:450px" onclick="press('B4')"></div>
+
+    <div class="black" style="left:31px"></div>
+    <div class="black" style="left:76px"></div>
+    <div class="black" style="left:121px"></div>
+    <div class="black" style="left:211px"></div>
+    <div class="black" style="left:256px"></div>
+    <div class="black" style="left:346px"></div>
+    <div class="black" style="left:391px"></div>
+    <div class="black" style="left:436px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    const scale = ["A3", "B3", "가운데 C", "D4", "E4", "F4", "G4"];
+    let currentSteps = [];
+    let userSelection = [];
+    let score = 0;
+
+    const stepSize = 10; 
+
+    function drawLedgers(step, xPos) {
+        const container = document.getElementById("ledger-container");
+        
+        // 윗덧줄 좌표 보정: 가운데 C(80px), E4(60px), G4(40px)
+        if (step >= 2) drawSingleLedger(80, xPos);
+        if (step >= 4) drawSingleLedger(60, xPos);
+        if (step >= 6) drawSingleLedger(40, xPos);
+    }
+
+    function drawSingleLedger(y, xPos) {
+        const container = document.getElementById("ledger-container");
+        const div = document.createElement("div");
+        div.className = "dynamic-ledger";
+        div.style.top = y + "px";
+        div.style.left = (xPos - 6) + "px";
+        container.appendChild(div);
+    }
+
+    function newNotes() {
+        userSelection = [];
+        document.querySelectorAll('.white').forEach(k => k.classList.remove('selected'));
+        document.getElementById("ledger-container").innerHTML = "";
+
+        let first = Math.floor(Math.random() * scale.length);
+        let second;
+        do {
+            second = Math.floor(Math.random() * scale.length);
+        } while (Math.abs(first - second) < 1);
+
+        currentSteps = [first, second];
+
+        const n1 = document.getElementById("note1");
+        const n2 = document.getElementById("note2");
+        
+        let x1 = 320, x2 = 320;
+        if (Math.abs(first - second) === 1) {
+            if (first < second) { x1 = 308; x2 = 332; }
+            else { x1 = 332; x2 = 308; }
+        }
+
+        // --- 위치 보정 핵심 ---
+        // A3(0)일 때 중심이 100px(제1선)에 오도록 설정하여 전체를 한 음씩 올림
+        // 온음표 높이 절반(7px)을 고려하여 top 좌표 계산
+        const noteCenterBase = 97; 
+        
+        n1.style.top = (noteCenterBase - (first * stepSize) - 7) + "px";
+        n1.style.left = x1 + "px";
+        n2.style.top = (noteCenterBase - (second * stepSize) - 7) + "px";
+        n2.style.left = x2 + "px";
+
+        drawLedgers(first, x1);
+        drawLedgers(second, x2);
+    }
+
+    function press(key) {
+        const keyEl = document.getElementById("key-" + key);
+        if (userSelection.includes(key)) {
+            userSelection = userSelection.filter(k => k !== key);
+            keyEl.classList.remove('selected');
+        } else if (userSelection.length < 2) {
+            userSelection.push(key);
+            keyEl.classList.add('selected');
+        }
+
+        if (userSelection.length === 2) {
+            const answers = [scale[currentSteps[0]], scale[currentSteps[1]]];
+            if (userSelection.every(val => answers.includes(val))) {
+                score++;
+                document.getElementById("score").innerText = score;
+                setTimeout(newNotes, 400);
+            } else {
+                alert("다시 확인해 보세요! 😊");
+                userSelection = [];
+                document.querySelectorAll('.white').forEach(k => k.classList.remove('selected'));
+            }
+        }
+    }
+
+    newNotes();
+</script>
+</body>
+</html>

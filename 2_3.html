@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>화음 읽기 게임 - C3~C4 (보정)</title>
+
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+
+    #staff {
+        position: relative;
+        width: 520px;
+        height: 200px;
+        margin: 50px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: black;
+        z-index: 10;
+    }
+
+    .dynamic-ledger {
+        position: absolute;
+        width: 46px;
+        height: 2px;
+        background: black;
+        z-index: 10;
+    }
+
+    #clef {
+        position: absolute;
+        font-size: 110px;
+        left: 20px;
+        top: 32px; 
+        z-index: 3;
+        user-select: none;
+    }
+
+    .note {
+        position: absolute;
+        width: 24px;
+        height: 16px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        z-index: 5;
+        transform: rotate(-15deg);
+    }
+
+    #piano { position: relative; width: 480px; height: 200px; margin: 40px auto; }
+
+    .white {
+        position: absolute;
+        width: 60px;
+        height: 200px;
+        background: white;
+        border: 1px solid #ccc;
+        border-bottom: 4px solid #bbb;
+        cursor: pointer;
+        border-radius: 0 0 5px 5px;
+        display: flex;
+        justify-content: center;
+        transition: background 0.1s;
+    }
+    
+    .white.selected { background: #ffeb3b !important; }
+
+    /* 건반 텍스트 스타일 */
+    .white span { position: absolute; bottom: 10px; font-size: 14px; font-weight: bold; color: #888; }
+
+    .black { position: absolute; width: 36px; height: 120px; background: #333; top: 0; z-index: 11; pointer-events: none; border-radius: 0 0 3px 3px; }
+</style>
+</head>
+
+<body>
+
+<h1>🎹 화음 읽기 게임</h1>
+<p>오선지에 나타난 두 개의 음을 건반에서 차례로 눌러보세요!</p>
+
+<div id="staff">
+    <div id="clef">𝄢</div>
+    <div class="line" style="top:60px"></div>
+    <div class="line" style="top:80px"></div>
+    <div class="line" style="top:100px"></div>
+    <div class="line" style="top:120px"></div>
+    <div class="line" style="top:140px"></div>
+
+    <div id="ledger-container"></div>
+    <div id="note1" class="note"></div>
+    <div id="note2" class="note"></div>
+</div>
+
+<div id="piano">
+    <div id="key-C3" class="white" style="left:0px" onclick="press('C3')"></div>
+    <div id="key-D3" class="white" style="left:60px" onclick="press('D3')"></div>
+    <div id="key-E3" class="white" style="left:120px" onclick="press('E3')"></div>
+    <div id="key-F3" class="white" style="left:180px" onclick="press('F3')"></div>
+    <div id="key-G3" class="white" style="left:240px" onclick="press('G3')"></div>
+    <div id="key-A3" class="white" style="left:300px" onclick="press('A3')"></div>
+    <div id="key-B3" class="white" style="left:360px" onclick="press('B3')"></div>
+    <div id="key-C4" class="white" style="left:420px" onclick="press('C4')"><span>가운데 C</span></div>
+
+    <div class="black" style="left:42px"></div>
+    <div class="black" style="left:102px"></div>
+    <div class="black" style="left:222px"></div>
+    <div class="black" style="left:282px"></div>
+    <div class="black" style="left:342px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    const scale = ["C3", "D3", "E3", "F3", "G3", "A3", "B3", "C4"];
+    let currentSteps = [];
+    let userSelection = [];
+    let score = 0;
+
+    // 요청하신 대로 base y를 106으로 설정
+    const baseY = 106; 
+    const stepSize = 10;
+
+    function drawSingleLedger(y, xPos) {
+        const container = document.getElementById("ledger-container");
+        const div = document.createElement("div");
+        div.className = "dynamic-ledger";
+        div.style.top = y + "px";
+        div.style.left = (xPos - 11) + "px";
+        container.appendChild(div);
+    }
+
+    function newNotes() {
+        userSelection = [];
+        document.querySelectorAll('.white').forEach(k => k.classList.remove('selected'));
+        document.getElementById("ledger-container").innerHTML = "";
+
+        let first = Math.floor(Math.random() * scale.length);
+        let second;
+        do {
+            second = Math.floor(Math.random() * scale.length);
+        } while (Math.abs(first - second) < 1);
+
+        currentSteps = [first, second];
+
+        const n1 = document.getElementById("note1");
+        const n2 = document.getElementById("note2");
+        
+        let x1 = 320, x2 = 320;
+        if (Math.abs(first - second) === 1) {
+            if (first < second) { x1 = 308; x2 = 332; }
+            else { x1 = 332; x2 = 308; }
+        }
+
+        n1.style.top = (baseY - (first * stepSize) - 8) + "px";
+        n1.style.left = x1 + "px";
+        n2.style.top = (baseY - (second * stepSize) - 8) + "px";
+        n2.style.left = x2 + "px";
+
+        // C4(인덱스 7) 덧줄 위치 보정
+        // baseY가 106일 때 C4의 y좌표는 약 36px 근처이므로 덧줄은 40px에 위치
+        if (first === 7) drawSingleLedger(40, x1);
+        if (second === 7) drawSingleLedger(40, x2);
+    }
+
+    function press(key) {
+        const keyEl = document.getElementById("key-" + key);
+        
+        if (userSelection.includes(key)) {
+            userSelection = userSelection.filter(k => k !== key);
+            keyEl.classList.remove('selected');
+        } else if (userSelection.length < 2) {
+            userSelection.push(key);
+            keyEl.classList.add('selected');
+        }
+
+        if (userSelection.length === 2) {
+            const answers = [scale[currentSteps[0]], scale[currentSteps[1]]];
+            if (userSelection.every(val => answers.includes(val))) {
+                score++;
+                document.getElementById("score").innerText = score;
+                setTimeout(newNotes, 400);
+            } else {
+                alert("다시 확인해 보세요! 😊");
+                userSelection = [];
+                document.querySelectorAll('.white').forEach(k => k.classList.remove('selected'));
+            }
+        }
+    }
+
+    newNotes();
+</script>
+
+</body>
+</html>

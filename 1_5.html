@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>악보 읽기 게임 - F3-E4</title>
+
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+
+    #staff {
+        position: relative;
+        width: 520px;
+        height: 240px; 
+        margin: 40px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: black;
+        z-index: 10;
+    }
+
+    .ledger {
+        position: absolute;
+        width: 46px;
+        height: 2px;
+        background: black;
+        left: 312px;
+        display: none;
+        z-index: 10; 
+    }
+
+    #clef {
+        position: absolute;
+        font-size: 170px;
+        left: 10px;
+        top: 25px; 
+        z-index: 3;
+        user-select: none;
+    }
+
+    #note {
+        position: absolute;
+        width: 24px;
+        height: 16px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        left: 320px;
+        z-index: 5;
+        transform: rotate(-15deg);
+    }
+
+    #piano { position: relative; width: 480px; height: 200px; margin: 40px auto; }
+
+    .white {
+        position: absolute;
+        width: 60px;
+        height: 200px;
+        background: white;
+        border: 1px solid #ccc;
+        border-bottom: 4px solid #bbb;
+        cursor: pointer;
+        border-radius: 0 0 5px 5px;
+        display: flex;
+        justify-content: center;
+    }
+    .white:active { background: #eee; }
+
+    .white span { 
+        position: absolute; 
+        bottom: 10px; 
+        font-size: 12px; 
+        font-weight: bold; 
+        color: #888;
+        line-height: 1.2;
+        text-align: center;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+    }
+
+    .black { position: absolute; width: 36px; height: 120px; background: #333; top: 0; z-index: 11; cursor: pointer; border-radius: 0 0 3px 3px; }
+</style>
+</head>
+
+<body>
+
+<h1>🎹 악보 읽기 게임 (F3 ~ E4)</h1>
+
+<div id="staff">
+    <div id="clef">𝄞</div>
+    
+    <div class="line" style="top:80px"></div>
+    <div class="line" style="top:100px"></div>
+    <div class="line" style="top:120px"></div>
+    <div class="line" style="top:140px"></div>
+    <div class="line" style="top:160px"></div>
+
+    <div id="L1" class="ledger"></div>
+    <div id="L2" class="ledger"></div>
+    <div id="L3" class="ledger"></div>
+
+    <div id="note"></div>
+</div>
+
+<div id="piano">
+    <div class="white" style="left:0px" onclick="press('F3')"></div>
+    <div class="white" style="left:60px" onclick="press('G3')"></div>
+    <div class="white" style="left:120px" onclick="press('A3')"></div>
+    <div class="white" style="left:180px" onclick="press('B3')"></div>
+    <div class="white" style="left:240px" onclick="press('가운데 C')"><span>가운데 C</span></div>
+    <div class="white" style="left:300px" onclick="press('D4')"></div>
+    <div class="white" style="left:360px" onclick="press('E4')"></div>
+
+    <div class="black" style="left:42px"></div>
+    <div class="black" style="left:102px"></div>
+    <div class="black" style="left:162px"></div>
+    
+    <div class="black" style="left:282px"></div>
+    <div class="black" style="left:342px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    const scale = ["F3", "G3", "A3", "B3", "가운데 C", "D4", "E4"];
+    let currentStep = 0;
+    let score = 0;
+
+    const baseY = 210; 
+    const stepSize = 10;
+
+    function newNote() {
+        currentStep = Math.floor(Math.random() * scale.length);
+        
+        let y = baseY - (currentStep * stepSize);
+        document.getElementById("note").style.top = y + "px";
+
+        const l1 = document.getElementById("L1");
+        const l2 = document.getElementById("L2");
+        const l3 = document.getElementById("L3");
+
+        l1.style.display = "none";
+        l2.style.display = "none";
+        l3.style.display = "none";
+
+        if (currentStep === 0) {
+            l1.style.display = "block"; l1.style.top = "180px";
+            l2.style.display = "block"; l2.style.top = "200px";
+            l3.style.display = "block"; l3.style.top = "220px";
+        }
+        else if (currentStep === 1 || currentStep === 2) {
+            l1.style.display = "block"; l1.style.top = "180px";
+            l2.style.display = "block"; l2.style.top = "200px";
+        }
+        else if (currentStep === 3 || currentStep === 4) {
+            l1.style.display = "block"; l1.style.top = "180px";
+        }
+    }
+
+    function press(key) {
+        if (key === scale[currentStep]) {
+            score++;
+            document.getElementById("score").innerText = score;
+            newNote();
+        } else {
+            alert("다시 확인해 보세요! 😊");
+        }
+    }
+
+    newNote();
+</script>
+
+</body>
+</html>

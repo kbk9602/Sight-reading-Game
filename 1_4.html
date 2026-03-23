@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>악보 읽기 게임 - 건반 확장판</title>
+
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+
+    #staff {
+        position: relative;
+        width: 520px;
+        height: 240px; 
+        margin: 40px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: black;
+        z-index: 10;
+    }
+
+    .ledger {
+        position: absolute;
+        width: 46px;
+        height: 2px;
+        background: black;
+        left: 312px;
+        display: none;
+        z-index: 10; 
+    }
+
+    #clef {
+        position: absolute;
+        font-size: 110px;
+        left: 20px;
+        top: 74px; 
+        z-index: 3;
+        user-select: none;
+    }
+
+    #note {
+        position: absolute;
+        width: 24px;
+        height: 16px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        left: 320px;
+        z-index: 5;
+        transform: rotate(-15deg);
+    }
+
+    /* 피아노 전체 너비 확장 (흰건반 11개 x 45px) */
+    #piano { 
+        position: relative; 
+        width: 495px; 
+        height: 200px; 
+        margin: 40px auto; 
+    }
+
+    .white {
+        position: absolute;
+        width: 45px; /* 너비를 살짝 줄여 더 많은 건반 배치 */
+        height: 200px;
+        background: white;
+        border: 1px solid #ccc;
+        border-bottom: 4px solid #bbb;
+        cursor: pointer;
+        border-radius: 0 0 5px 5px;
+        display: flex;
+        justify-content: center;
+    }
+    .white:active { background: #eee; }
+
+    .white span { 
+        position: absolute; 
+        bottom: 10px; 
+        font-size: 11px; 
+        font-weight: bold; 
+        color: #888;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+    }
+
+    .black { 
+        position: absolute; 
+        width: 28px; 
+        height: 120px; 
+        background: #333; 
+        top: 0; 
+        z-index: 11; 
+        cursor: pointer; 
+        border-radius: 0 0 3px 3px; 
+    }
+</style>
+</head>
+
+<body>
+
+<h1>🎹 악보 읽기 게임 (A3 ~ G4)</h1>
+
+<div id="staff">
+    <div id="clef">𝄢</div>
+    
+    <div class="line" style="top:100px"></div>
+    <div class="line" style="top:120px"></div>
+    <div class="line" style="top:140px"></div>
+    <div class="line" style="top:160px"></div>
+    <div class="line" style="top:180px"></div>
+
+    <div id="L1" class="ledger"></div>
+    <div id="L2" class="ledger"></div>
+    <div id="L3" class="ledger"></div>
+
+    <div id="note"></div>
+</div>
+
+<div id="piano">
+    <div class="white" style="left:0px" onclick="press('F3')"></div>
+    <div class="white" style="left:45px" onclick="press('G3')"></div>
+    <div class="white" style="left:90px" onclick="press('A3')"></div>
+    <div class="white" style="left:135px" onclick="press('B3')"></div>
+    <div class="white" style="left:180px" onclick="press('가운데 C')"><span>가운데 C</span></div>
+    <div class="white" style="left:225px" onclick="press('D4')"></div>
+    <div class="white" style="left:270px" onclick="press('E4')"></div>
+    <div class="white" style="left:315px" onclick="press('F4')"></div>
+    <div class="white" style="left:360px" onclick="press('G4')"></div>
+    <div class="white" style="left:405px" onclick="press('A4')"></div>
+    <div class="white" style="left:450px" onclick="press('B4')"></div>
+
+    <div class="black" style="left:31px"></div>
+    <div class="black" style="left:76px"></div>
+    <div class="black" style="left:121px"></div>
+    
+    <div class="black" style="left:211px"></div>
+    <div class="black" style="left:256px"></div>
+    
+    <div class="black" style="left:346px"></div>
+    <div class="black" style="left:391px"></div>
+    <div class="black" style="left:436px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    // 문제 범위는 A3~G4로 유지
+    const scale = ["A3", "B3", "가운데 C", "D4", "E4", "F4", "G4"];
+    let currentStep = 0;
+    let score = 0;
+
+    const baseY = 88; 
+    const stepSize = 10;
+
+    function newNote() {
+        currentStep = Math.floor(Math.random() * scale.length);
+        
+        let y = baseY - (currentStep * stepSize);
+        document.getElementById("note").style.top = y + "px";
+
+        const l1 = document.getElementById("L1");
+        const l2 = document.getElementById("L2");
+        const l3 = document.getElementById("L3");
+
+        l1.style.display = "none";
+        l2.style.display = "none";
+        l3.style.display = "none";
+
+        // A3(0), B3(1) - 덧줄 없음
+        // 가운데 C(2), D4(3) - 1개
+        if (currentStep === 2 || currentStep === 3) {
+            l1.style.display = "block"; l1.style.top = "80px";
+        }
+        // E4(4), F4(5) - 2개
+        else if (currentStep === 4 || currentStep === 5) {
+            l1.style.display = "block"; l1.style.top = "80px";
+            l2.style.display = "block"; l2.style.top = "60px";
+        }
+        // G4(6) - 3개
+        else if (currentStep === 6) {
+            l1.style.display = "block"; l1.style.top = "80px";
+            l2.style.display = "block"; l2.style.top = "60px";
+            l3.style.display = "block"; l3.style.top = "40px";
+        }
+    }
+
+    function press(key) {
+        if (key === scale[currentStep]) {
+            score++;
+            document.getElementById("score").innerText = score;
+            newNote();
+        } else {
+            alert("다시 확인해 보세요! 😊");
+        }
+    }
+
+    newNote();
+</script>
+
+</body>
+</html>

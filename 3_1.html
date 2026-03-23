@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>화음 읽기 게임 - 저음역대 3화음</title>
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+    
+    #staff {
+        position: relative;
+        width: 520px;
+        height: 280px; 
+        margin: 40px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    .line { position: absolute; width: 100%; height: 2px; background: black; z-index: 5; }
+    
+    .dynamic-ledger {
+        position: absolute;
+        width: 38px;
+        height: 2px;
+        background: black;
+        z-index: 5;
+    }
+
+    #clef { position: absolute; font-size: 110px; left: 20px; top: 15px; z-index: 3; user-select: none; }
+
+    .note {
+        position: absolute;
+        width: 22px;
+        height: 14px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        z-index: 15;
+        transform: rotate(-15deg);
+        display: none; /* 초기 숨김 */
+    }
+
+    #piano { position: relative; width: 420px; height: 200px; margin: 40px auto; }
+    
+    .white {
+        position: absolute; width: 60px; height: 200px; background: white;
+        border: 1px solid #ccc; border-bottom: 4px solid #bbb; cursor: pointer; border-radius: 0 0 5px 5px;
+        display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px;
+    }
+    
+    .white span { 
+        font-size: 11px; 
+        font-weight: bold; 
+        color: #e53935;
+        margin-bottom: 5px;
+    }
+    
+    .white.selected { background: #ffeb3b !important; }
+    .black { position: absolute; width: 36px; height: 120px; background: #333; top: 0; z-index: 11; border-radius: 0 0 3px 3px; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<h1>🎹 3화음 읽기 게임 (F1 ~ E2)</h1>
+<p>오선지 아래의 세 음을 건반에서 모두 눌러보세요!</p>
+
+<div id="staff">
+    <div id="clef">𝄢</div>
+    <div class="line" style="top:40px"></div>
+    <div class="line" style="top:60px"></div>
+    <div class="line" style="top:80px"></div>
+    <div class="line" style="top:100px"></div>
+    <div class="line" style="top:120px"></div>
+    
+    <div id="ledger-container"></div>
+    <div id="note1" class="note"></div>
+    <div id="note2" class="note"></div>
+    <div id="note3" class="note"></div>
+</div>
+
+<div id="piano">
+    <div id="key-F1" class="white" style="left:0px" onclick="press('F1')"></div>
+    <div id="key-G1" class="white" style="left:60px" onclick="press('G1')"></div>
+    <div id="key-A1" class="white" style="left:120px" onclick="press('A1')"></div>
+    <div id="key-B1" class="white" style="left:180px" onclick="press('B1')"></div>
+    <div id="key-더 낮은 C" class="white" style="left:240px" onclick="press('더 낮은 C')"><span>더 낮은 C</span></div>
+    <div id="key-D2" class="white" style="left:300px" onclick="press('D2')"></div>
+    <div id="key-E2" class="white" style="left:360px" onclick="press('E2')"></div>
+
+    <div class="black" style="left:42px"></div>
+    <div class="black" style="left:102px"></div>
+    <div class="black" style="left:162px"></div>
+    <div class="black" style="left:282px"></div>
+    <div class="black" style="left:342px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    const scale = ["F1", "G1", "A1", "B1", "더 낮은 C", "D2", "E2"];
+    let currentSteps = [];
+    let userSelection = [];
+    let score = 0;
+
+    const stepSize = 10; 
+    const baseY = 191; 
+
+    function drawLedgers(step, xPos) {
+        let count = 0;
+        if (step === 0) count = 4; // F1
+        else if (step === 1 || step === 2) count = 3; // G1, A1
+        else if (step === 3 || step === 4) count = 2; // B1, 더 낮은 C
+        else if (step === 5 || step === 6) count = 1; // D2, E2
+
+        for(let i = 1; i <= count; i++) {
+            drawSingleLedger(120 + (i * 20), xPos);
+        }
+    }
+
+    function drawSingleLedger(y, xPos) {
+        const container = document.getElementById("ledger-container");
+        const div = document.createElement("div");
+        div.className = "dynamic-ledger";
+        div.style.top = y + "px";
+        div.style.left = (xPos - 6) + "px"; // 음표 중앙 보정
+        container.appendChild(div);
+    }
+
+    function newNotes() {
+        userSelection = [];
+        document.querySelectorAll('.white').forEach(k => k.classList.remove('selected'));
+        document.getElementById("ledger-container").innerHTML = "";
+
+        // 1. 중복 없이 3개 음 선택 및 정렬
+        let indices = [];
+        while(indices.length < 3) {
+            let r = Math.floor(Math.random() * scale.length);
+            if(!indices.includes(r)) indices.push(r);
+        }
+        indices.sort((a, b) => a - b);
+        currentSteps = indices;
+
+        const noteEls = [document.getElementById("note1"), document.getElementById("note2"), document.getElementById("note3")];
+        
+        let centerX = 320; 
+        let shift = 26; 
+
+        // 2. 가로 위치 계산 (2도 간격 시 지그재그)
+        let xPos = [0, 0, 0];
+        xPos[0] = centerX - (shift / 2);
+
+        if (indices[1] - indices[0] === 1) xPos[1] = centerX + (shift / 2);
+        else xPos[1] = centerX - (shift / 2);
+
+        if (indices[2] - indices[1] === 1) {
+            xPos[2] = (xPos[1] > centerX) ? centerX - (shift / 2) : centerX + (shift / 2);
+        } else {
+            xPos[2] = centerX - (shift / 2);
+        }
+
+        // 3. 음표 배치 및 덧줄 그리기
+        indices.forEach((step, i) => {
+            noteEls[i].style.display = "block";
+            noteEls[i].style.top = (baseY - (step * stepSize)) + "px";
+            noteEls[i].style.left = xPos[i] + "px";
+            drawLedgers(step, xPos[i]);
+        });
+    }
+
+    function press(key) {
+        const keyEl = document.getElementById("key-" + key);
+        if (userSelection.includes(key)) {
+            userSelection = userSelection.filter(k => k !== key);
+            keyEl.classList.remove('selected');
+        } else if (userSelection.length < 3) {
+            userSelection.push(key);
+            keyEl.classList.add('selected');
+        }
+
+        if (userSelection.length === 3) {
+            const answers = currentSteps.map(idx => scale[idx]);
+            if (userSelection.every(val => answers.includes(val))) {
+                score++;
+                document.getElementById("score").innerText = score;
+                setTimeout(newNotes, 400);
+            } else {
+                alert("다시 확인해 보세요! 😊");
+                userSelection = [];
+                document.querySelectorAll('.white').forEach(k => k.classList.remove('selected'));
+            }
+        }
+    }
+
+    newNotes();
+</script>
+</body>
+</html>

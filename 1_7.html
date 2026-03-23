@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>악보 읽기 게임 - C5-E6</title>
+
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+
+    #staff {
+        position: relative;
+        width: 520px;
+        height: 220px; 
+        margin: 50px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: black;
+        z-index: 10;
+    }
+
+    .ledger {
+        position: absolute;
+        width: 46px;
+        height: 2px;
+        background: black;
+        left: 312px;
+        display: none;
+        z-index: 10; 
+    }
+
+    #clef {
+        position: absolute;
+        font-size: 170px;
+        left: 10px;
+        top: 20px; 
+        z-index: 3;
+        user-select: none;
+    }
+
+    #note {
+        position: absolute;
+        width: 24px;
+        height: 16px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        left: 320px;
+        z-index: 5;
+        transform: rotate(-15deg);
+    }
+
+    /* 건반 10개 너비에 맞게 조정 (45px * 10 = 450px) */
+    #piano { position: relative; width: 450px; height: 200px; margin: 40px auto; }
+
+    .white {
+        position: absolute;
+        width: 45px;
+        height: 200px;
+        background: white;
+        border: 1px solid #ccc;
+        border-bottom: 4px solid #bbb;
+        cursor: pointer;
+        border-radius: 0 0 5px 5px;
+        display: flex;
+        justify-content: center;
+    }
+    .white:active { background: #eee; }
+
+    /* 라벨 세로 정렬 스타일 */
+    .white span { 
+        position: absolute; 
+        bottom: 10px; 
+        font-size: 12px; 
+        font-weight: bold; 
+        color: #888;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+    }
+
+    .black { 
+        position: absolute; 
+        width: 28px; 
+        height: 120px; 
+        background: #333; 
+        top: 0; 
+        z-index: 11; 
+        cursor: pointer; 
+        border-radius: 0 0 3px 3px; 
+    }
+</style>
+</head>
+
+<body>
+
+<h1>🎹 악보 읽기 게임 (C5 ~ E6)</h1>
+
+<div id="staff">
+    <div id="clef">𝄞</div>
+    
+    <div class="line" style="top:80px"></div>
+    <div class="line" style="top:100px"></div>
+    <div class="line" style="top:120px"></div>
+    <div class="line" style="top:140px"></div>
+    <div class="line" style="top:160px"></div>
+
+    <div id="ledger1" class="ledger"></div>
+    <div id="ledger2" class="ledger"></div>
+    <div id="ledger3" class="ledger"></div>
+
+    <div id="note"></div>
+</div>
+
+<div id="piano">
+    <div class="white" style="left:0px" onclick="press('높은 C')"><span>높은 C</span></div>
+    <div class="white" style="left:45px" onclick="press('D5')"></div>
+    <div class="white" style="left:90px" onclick="press('E5')"></div>
+    <div class="white" style="left:135px" onclick="press('F5')"></div>
+    <div class="white" style="left:180px" onclick="press('G5')"></div>
+    <div class="white" style="left:225px" onclick="press('A5')"></div>
+    <div class="white" style="left:270px" onclick="press('B5')"></div>
+    <div class="white" style="left:315px" onclick="press('C6')"></div>
+    <div class="white" style="left:360px" onclick="press('D6')"></div>
+    <div class="white" style="left:405px" onclick="press('E6')"></div>
+
+    <div class="black" style="left:31px"></div>
+    <div class="black" style="left:76px"></div>
+    
+    <div class="black" style="left:166px"></div>
+    <div class="black" style="left:211px"></div>
+    <div class="black" style="left:256px"></div>
+
+    <div class="black" style="left:346px"></div>
+    <div class="black" style="left:391px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    // scale 배열 업데이트 (C5 -> 높은 C, E6까지 확장)
+    const scale = ["높은 C", "D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6", "E6"];
+    let currentStep = 0;
+    let score = 0;
+
+    // 높은 C(C5, 셋째 칸) 기준 baseY 조정 (오선지 위치 80~160px 기준)
+    const baseY = 98; 
+    const stepSize = 10;
+
+    function newNote() {
+        currentStep = Math.floor(Math.random() * scale.length);
+        
+        let y = baseY - (currentStep * stepSize);
+        document.getElementById("note").style.top = y + "px";
+
+        let l1 = document.getElementById("ledger1");
+        let l2 = document.getElementById("ledger2");
+        let l3 = document.getElementById("ledger3");
+
+        l1.style.display = "none";
+        l2.style.display = "none";
+        l3.style.display = "none";
+
+        // --- 높은음자리표 위쪽 덧줄 로직 ---
+        // A5(5), B5(6): 1줄 (60px)
+        if (currentStep === 5 || currentStep === 6) {
+            l1.style.display = "block"; l1.style.top = "60px";
+        }
+        // C6(7), D6(8): 2줄 (60, 40px)
+        else if (currentStep === 7 || currentStep === 8) {
+            l1.style.display = "block"; l1.style.top = "60px";
+            l2.style.display = "block"; l2.style.top = "40px";
+        }
+        // E6(9): 3줄 (60, 40, 20px)
+        else if (currentStep === 9) {
+            l1.style.display = "block"; l1.style.top = "60px";
+            l2.style.display = "block"; l2.style.top = "40px";
+            l3.style.display = "block"; l3.style.top = "20px";
+        }
+    }
+
+    function press(key) {
+        if (key === scale[currentStep]) {
+            score++;
+            document.getElementById("score").innerText = score;
+            newNote();
+        } else {
+            alert("다시 확인해 보세요! 😊");
+        }
+    }
+
+    newNote();
+</script>
+
+</body>
+</html>

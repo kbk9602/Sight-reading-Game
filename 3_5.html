@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>3음 화음 읽기 게임 - 배치 개선판</title>
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+    
+    #staff {
+        position: relative;
+        width: 540px;
+        height: 280px; 
+        margin: 40px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    /* 오선지 줄 */
+    .line { position: absolute; width: 100%; height: 2px; background: black; z-index: 10; }
+    
+    /* 동적 덧줄 */
+    .dynamic-ledger { position: absolute; width: 42px; height: 2px; background: black; z-index: 10; }
+
+    #clef { position: absolute; font-size: 170px; left: 10px; top: 25px; z-index: 3; user-select: none; }
+    
+    /* 음표 스타일 */
+    .note {
+        position: absolute;
+        width: 24px;
+        height: 16px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        z-index: 15;
+        transform: rotate(-15deg);
+    }
+
+    /* 피아노 건반 영역 */
+    #piano { position: relative; width: 420px; height: 200px; margin: 40px auto; }
+    
+    .white {
+        position: absolute; width: 60px; height: 200px; background: white;
+        border: 1px solid #ccc; border-bottom: 4px solid #bbb; cursor: pointer;
+        border-radius: 0 0 5px 5px; display: flex; justify-content: center;
+    }
+    
+    /* 선택된 건반 색상 */
+    .white.selected { background: #ffeb3b !important; }
+
+    .white span { 
+        position: absolute; bottom: 10px; font-size: 12px; font-weight: bold; 
+        color: #888; writing-mode: vertical-rl; text-orientation: upright; 
+    }
+
+    .black { 
+        position: absolute; width: 36px; height: 120px; background: #333; 
+        top: 0; z-index: 11; border-radius: 0 0 3px 3px; pointer-events: none; 
+    }
+</style>
+</head>
+<body>
+
+<h1>🎹 3음 화음 읽기 게임 (F3 ~ E4)</h1>
+<p>오선지에 나타난 세 개의 음을 모두 눌러보세요!</p>
+
+<div id="staff">
+    <div id="clef">𝄞</div>
+    <div class="line" style="top:80px"></div>
+    <div class="line" style="top:100px"></div>
+    <div class="line" style="top:120px"></div>
+    <div class="line" style="top:140px"></div>
+    <div class="line" style="top:160px"></div>
+
+    <div id="ledger-container"></div>
+    <div id="note1" class="note"></div>
+    <div id="note2" class="note"></div>
+    <div id="note3" class="note"></div>
+</div>
+
+<div id="piano">
+    <div id="key-F3" class="white" style="left:0px" onclick="press('F3')"></div>
+    <div id="key-G3" class="white" style="left:60px" onclick="press('G3')"></div>
+    <div id="key-A3" class="white" style="left:120px" onclick="press('A3')"></div>
+    <div id="key-B3" class="white" style="left:180px" onclick="press('B3')"></div>
+    <div id="key-가운데 C" class="white" style="left:240px" onclick="press('가운데 C')"><span>가운데 C</span></div>
+    <div id="key-D4" class="white" style="left:300px" onclick="press('D4')"></div>
+    <div id="key-E4" class="white" style="left:360px" onclick="press('E4')"></div>
+
+    <div class="black" style="left:42px"></div>
+    <div class="black" style="left:102px"></div>
+    <div class="black" style="left:162px"></div>
+    <div class="black" style="left:282px"></div>
+    <div class="black" style="left:342px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    const scale = ["F3", "G3", "A3", "B3", "가운데 C", "D4", "E4"];
+    let currentSteps = [];
+    let userSelection = [];
+    let score = 0;
+
+    const baseY = 210; 
+    const stepSize = 10;
+
+    // 덧줄 그리기 함수
+    function drawLedgers(step, xPos) {
+        if (step === 0) { // F3
+            drawSingleLedger(180, xPos); drawSingleLedger(200, xPos); drawSingleLedger(220, xPos);
+        } else if (step === 1 || step === 2) { // G3, A3
+            drawSingleLedger(180, xPos); drawSingleLedger(200, xPos);
+        } else if (step === 3 || step === 4) { // B3, 가운데 C
+            drawSingleLedger(180, xPos);
+        }
+    }
+
+    // 개별 덧줄 생성 함수 (-4 보정 포함)
+    function drawSingleLedger(y, xPos) {
+        const container = document.getElementById("ledger-container");
+        const div = document.createElement("div");
+        div.className = "dynamic-ledger";
+        div.style.top = y + "px";
+        div.style.left = (xPos - 6) + "px"; // 음표 중앙 정렬
+        container.appendChild(div);
+    }
+
+    // 새로운 문제 생성 함수 (핵심 로직)
+    function newNotes() {
+        userSelection = [];
+        document.querySelectorAll('.white').forEach(k => k.classList.remove('selected'));
+        document.getElementById("ledger-container").innerHTML = "";
+
+        // 1. 랜덤 음 3개 뽑기
+        let indices = [];
+        while(indices.length < 3) {
+            let r = Math.floor(Math.random() * scale.length);
+            if(!indices.includes(r)) indices.push(r);
+        }
+        indices.sort((a, b) => a - b); // 낮은 음부터 정렬
+        currentSteps = indices;
+
+        const notes = [
+            { el: document.getElementById("note1"), step: indices[0] },
+            { el: document.getElementById("note2"), step: indices[1] },
+            { el: document.getElementById("note3"), step: indices[2] }
+        ];
+
+        let centerX = 320; 
+        let shift = 26; // 겹칠 때 옆으로 밀어낼 거리
+
+        // 2. 가로 위치(xPos) 계산 로직
+        // 최저음은 왼쪽 라인에 배치
+        notes[0].xPos = centerX - (shift / 2);
+
+        // 중간음 배치: 아래음과 2도 관계면 오른쪽으로
+        if (notes[1].step - notes[0].step === 1) {
+            notes[1].xPos = centerX + (shift / 2);
+        } else {
+            notes[1].xPos = centerX - (shift / 2);
+        }
+
+        // 최고음 배치: 중간음과 2도 관계면 중간음의 반대편으로
+        if (notes[2].step - notes[1].step === 1) {
+            notes[2].xPos = (notes[1].xPos > centerX) ? centerX - (shift / 2) : centerX + (shift / 2);
+        } else {
+            notes[2].xPos = centerX - (shift / 2);
+        }
+
+        // 3. 화면에 실제로 그리기
+        notes.forEach(note => {
+            note.el.style.top = (baseY - (note.step * stepSize)) + "px";
+            note.el.style.left = note.xPos + "px";
+            drawLedgers(note.step, note.xPos);
+        });
+    }
+
+    // 건반 클릭 함수
+    function press(key) {
+        const keyEl = document.getElementById("key-" + key);
+        
+        if (userSelection.includes(key)) {
+            userSelection = userSelection.filter(k => k !== key);
+            keyEl.classList.remove('selected');
+        } else if (userSelection.length < 3) {
+            userSelection.push(key);
+            keyEl.classList.add('selected');
+        }
+
+        if (userSelection.length === 3) {
+            const answers = currentSteps.map(s => scale[s]);
+            // 모든 선택한 음이 정답 배열에 있는지 확인
+            if (userSelection.every(val => answers.includes(val))) {
+                score++;
+                document.getElementById("score").innerText = score;
+                setTimeout(newNotes, 400);
+            } else {
+                alert("다시 확인해 보세요! 😊");
+                userSelection = [];
+                document.querySelectorAll('.white').forEach(k => k.classList.remove('selected'));
+            }
+        }
+    }
+
+    // 첫 실행
+    newNotes();
+</script>
+</body>
+</html>

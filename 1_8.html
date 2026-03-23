@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>악보 읽기 게임 - C6-C7 집중판</title>
+
+<style>
+    body { text-align: center; font-family: sans-serif; background-color: #f8f9fa; padding-top: 20px; }
+
+    #staff {
+        position: relative;
+        width: 520px;
+        height: 320px; 
+        margin: 40px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: black;
+        z-index: 10;
+    }
+
+    .ledger {
+        position: absolute;
+        width: 46px;
+        height: 2px;
+        background: black;
+        left: 312px;
+        display: none;
+        z-index: 10; 
+    }
+
+    #clef {
+        position: absolute;
+        font-size: 170px;
+        left: 10px;
+        top: 123px; 
+        z-index: 3;
+        user-select: none;
+    }
+
+    #note {
+        position: absolute;
+        width: 24px;
+        height: 16px;
+        border: 4px solid black;
+        border-radius: 50%;
+        background: transparent; 
+        left: 320px;
+        z-index: 5;
+        transform: rotate(-15deg);
+    }
+
+    #piano { position: relative; width: 450px; height: 200px; margin: 40px auto; }
+
+    .white {
+        position: absolute;
+        width: 45px;
+        height: 200px;
+        background: white;
+        border: 1px solid #ccc;
+        border-bottom: 4px solid #bbb;
+        cursor: pointer;
+        border-radius: 0 0 5px 5px;
+        display: flex;
+        justify-content: center;
+    }
+    .white:active { background: #eee; }
+
+    .white span { 
+        position: absolute; 
+        bottom: 10px; 
+        font-size: 12px; 
+        font-weight: bold; 
+        color: #888;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+    }
+
+    .black { 
+        position: absolute; 
+        width: 28px; 
+        height: 120px; 
+        background: #333; 
+        top: 0; 
+        z-index: 11; 
+        cursor: pointer; 
+        border-radius: 0 0 3px 3px; 
+    }
+</style>
+</head>
+
+<body>
+
+<h1>🎹 악보 읽기 게임 (C6 ~ C7)</h1>
+
+<div id="staff">
+    <div id="clef">𝄞</div>
+    
+    <div class="line" style="top:180px"></div>
+    <div class="line" style="top:200px"></div>
+    <div class="line" style="top:220px"></div>
+    <div class="line" style="top:240px"></div>
+    <div class="line" style="top:260px"></div>
+
+    <div id="L1" class="ledger"></div>
+    <div id="L2" class="ledger"></div>
+    <div id="L3" class="ledger"></div>
+    <div id="L4" class="ledger"></div>
+    <div id="L5" class="ledger"></div>
+    <div id="L6" class="ledger"></div>
+    <div id="L7" class="ledger"></div>
+
+    <div id="note"></div>
+</div>
+
+<div id="piano">
+    <div class="white" style="left:0px" onclick="press('더 높은 C')"><span>더 높은 C</span></div>
+    <div class="white" style="left:45px" onclick="press('D6')"></div>
+    <div class="white" style="left:90px" onclick="press('E6')"></div>
+    <div class="white" style="left:135px" onclick="press('F6')"></div>
+    <div class="white" style="left:180px" onclick="press('G6')"></div>
+    <div class="white" style="left:225px" onclick="press('A6')"></div>
+    <div class="white" style="left:270px" onclick="press('B6')"></div>
+    <div class="white" style="left:315px" onclick="press('C7')"></div>
+    <div class="white" style="left:360px" onclick="press('D7')"></div>
+    <div class="white" style="left:405px" onclick="press('E7')"></div>
+
+    <div class="black" style="left:31px"></div>
+    <div class="black" style="left:76px"></div>
+    <div class="black" style="left:166px"></div>
+    <div class="black" style="left:211px"></div>
+    <div class="black" style="left:256px"></div>
+    <div class="black" style="left:346px"></div>
+    <div class="black" style="left:391px"></div>
+</div>
+
+<h2>현재 점수: <span id="score" style="color: blue;">0</span></h2>
+
+<script>
+    // 전체 건반 리스트 (정답 확인용)
+    const allKeys = ["더 높은 C", "D6", "E6", "F6", "G6", "A6", "B6", "C7", "D7", "E7"];
+    
+    // 실제 문제 출제 범위 (더 높은 C ~ C7)
+    const quizRange = ["더 높은 C", "D6", "E6", "F6", "G6", "A6", "B6", "C7"];
+    
+    let currentStep = 0;
+    let score = 0;
+
+    const baseY = 136; 
+    const stepSize = 10;
+
+    function newNote() {
+        // quizRange 범위 내에서만 랜덤 추출 (0 ~ 7번 인덱스)
+        currentStep = Math.floor(Math.random() * quizRange.length);
+        
+        let y = baseY - (currentStep * stepSize) - 9; 
+        document.getElementById("note").style.top = y + "px";
+
+        for(let i=1; i<=7; i++) document.getElementById("L"+i).style.display = "none";
+
+        function show(num) {
+            for(let i=1; i<=num; i++) {
+                let el = document.getElementById("L"+i);
+                el.style.display = "block";
+                el.style.top = (180 - (i * 20)) + "px";
+            }
+        }
+
+        // 덧줄 표시 로직 (C6~C7 범위에 맞춤)
+        if (currentStep === 0 || currentStep === 1) show(2);      // C6, D6
+        else if (currentStep === 2 || currentStep === 3) show(3); // E6, F6
+        else if (currentStep === 4 || currentStep === 5) show(4); // G6, A6
+        else if (currentStep === 6 || currentStep === 7) show(5); // B6, C7
+    }
+
+    function press(key) {
+        // 사용자가 누른 건반이 현재 출제된 문제와 일치하는지 확인
+        if (key === quizRange[currentStep]) {
+            score++;
+            document.getElementById("score").innerText = score;
+            newNote();
+        } else {
+            alert("다시 한 번 확인해보세요! 😊");
+        }
+    }
+
+    newNote();
+</script>
+
+</body>
+</html>
