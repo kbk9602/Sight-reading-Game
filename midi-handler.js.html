@@ -1,0 +1,77 @@
+// 1. MIDI 장치 연결 및 상태 감지
+let activeNotes = new Set(); // 현재 눌려있는 건반 저장 (화음용)
+
+if (navigator.requestMIDIAccess) {
+    navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+} else {
+    alert("이 브라우저는 MIDI를 지원하지 않습니다. 크롬을 사용해 주세요!");
+}
+
+function onMIDISuccess(midiAccess) {
+    const inputs = midiAccess.inputs.values();
+    let deviceFound = false;
+
+    for (let input of inputs) {
+        input.onmidimessage = getMIDIMessage;
+        console.log("연결된 장치:", input.name);
+        deviceFound = true;
+    }
+
+    if (deviceFound) {
+        console.log("🎹 MIDI 장치 연결 성공!");
+        // 처음 연결 시 알림 (너무 자주 뜨면 불편하니 콘솔로그로 대체 권장, 원하시면 alert 유지 가능)
+    }
+
+    // 장치 연결 상태 변경 감지
+    midiAccess.onstatechange = (e) => {
+        if (e.port.state === 'connected') {
+            console.log("새로운 장치 연결됨:", e.port.name);
+        }
+    };
+}
+
+function onMIDIFailure() {
+    console.log("MIDI 장치 접근에 실패했습니다.");
+}
+
+// 2. MIDI 메시지 해석 및 처리
+function getMIDIMessage(message) {
+    const command = message.data[0];
+    const note = message.data[1];
+    const velocity = (message.data.length > 2) ? message.data[2] : 0;
+
+    const noteName = midiNoteToName(note);
+
+    if (command === 144 && velocity > 0) { // Note ON (눌렀을 때)
+        activeNotes.add(noteName);
+        handleInput();
+    } 
+    else if (command === 128 || (command === 144 && velocity === 0)) { // Note OFF (뗐을 때)
+        activeNotes.delete(noteName);
+    }
+}
+
+// 3. 입력 판정 로직
+function handleInput() {
+    if (typeof press === 'function') {
+        // 단음 파일일 경우
+        if (activeNotes.size === 1) {
+            const singleNote = Array.from(activeNotes)[0];
+            press(singleNote);
+        }
+        // 화음 파일일 경우 (2음, 3음 파일에 맞춰 자동으로 대응)
+        // 화음용 파일에 'checkChord' 같은 함수가 있다면 여기를 더 확장할 수 있습니다.
+    }
+}
+
+// 4. MIDI 번호 -> 음 이름 변환 (특수 명칭 대응)
+function midiNoteToName(midi) {
+    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const octave = Math.floor(midi / 12) - 1;
+    const name = notes[midi % 12];
+    
+    // 이 부분을 현재 HTML의 scale 명칭과 똑같이 맞춰야 합니다.
+    if (name === "C" && octave === 2) return "더 낮은 C"; // F1~E2 구간의 C는 C2(2옥타브)임
+    
+    return name + octave;
+}
